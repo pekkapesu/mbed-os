@@ -172,6 +172,7 @@ using namespace mbed;
 #define SD_BLOCK_DEVICE_ERROR_PARAMETER          -5003  /*!< invalid parameter */
 #define SD_BLOCK_DEVICE_ERROR_NO_INIT            -5004  /*!< uninitialized */
 #define SD_BLOCK_DEVICE_ERROR_NO_DEVICE          -5005  /*!< device is missing or not connected */
+#define SD_BLOCK_DEVICE_ERROR_NO_DEVICE_1        -5015  /*!< device is missing or not connected */
 #define SD_BLOCK_DEVICE_ERROR_WRITE_PROTECTED    -5006  /*!< write protected */
 #define SD_BLOCK_DEVICE_ERROR_UNUSABLE           -5007  /*!< unusable card */
 #define SD_BLOCK_DEVICE_ERROR_NO_RESPONSE        -5008  /*!< No response from device */
@@ -285,6 +286,8 @@ int SDBlockDevice::_initialise_card()
     int32_t status = BD_ERROR_OK;
     uint32_t response, arg;
 
+    printf ("Pekka  SDBlockDevice::_initialise_card in \n");
+
     // Initialize the SPI interface: Card by default is in SD mode
     _spi_init();
 
@@ -341,6 +344,7 @@ int SDBlockDevice::_initialise_card()
     if ((BD_ERROR_OK != status) || (0x00 != response)) {
         _card_type = CARD_UNKNOWN;
         debug_if(SD_DBG, "Timeout waiting for card\n");
+        printf ("Pekka  SDBlockDevice::_initialise_card out \n");
         return status;
     }
 
@@ -369,6 +373,7 @@ int SDBlockDevice::_initialise_card()
     status = _cmd(CMD59_CRC_ON_OFF, 0);
 #endif
 
+    printf ("Pekka  SDBlockDevice::_initialise_card out \n");
     return status;
 }
 
@@ -376,6 +381,8 @@ int SDBlockDevice::_initialise_card()
 int SDBlockDevice::init()
 {
     int err;
+
+    printf("Pekka SDBlockDevice::init in \n");
 
     lock();
 
@@ -420,6 +427,7 @@ int SDBlockDevice::init()
 
 end:
     unlock();
+    printf("Pekka SDBlockDevice::init out \n");
     return BD_ERROR_OK;
 }
 
@@ -522,6 +530,8 @@ int SDBlockDevice::program(const void *b, bd_addr_t addr, bd_size_t size)
 
 int SDBlockDevice::read(void *b, bd_addr_t addr, bd_size_t size)
 {
+    printf("Pekka SDBlockDevice::read in \n");
+
     if (!is_valid_read(addr, size)) {
         return SD_BLOCK_DEVICE_ERROR_PARAMETER;
     }
@@ -550,6 +560,7 @@ int SDBlockDevice::read(void *b, bd_addr_t addr, bd_size_t size)
     }
     if (BD_ERROR_OK != status) {
         unlock();
+        printf("Pekka SDBlockDevice::read out \n");
         return status;
     }
 
@@ -569,6 +580,7 @@ int SDBlockDevice::read(void *b, bd_addr_t addr, bd_size_t size)
         status = _cmd(CMD12_STOP_TRANSMISSION, 0x0);
     }
     unlock();
+    printf("Pekka SDBlockDevice::read out \n");
     return status;
 }
 
@@ -665,6 +677,8 @@ uint8_t SDBlockDevice::_cmd_spi(SDBlockDevice::cmdSupported cmd, uint32_t arg)
     uint8_t response;
     char cmdPacket[PACKET_SIZE];
 
+//    printf("Pekka SDBlockDevice::_cmd_spi in \n");
+
     // Prepare the command packet
     cmdPacket[0] = SPI_CMD(cmd);
     cmdPacket[1] = (arg >> 24);
@@ -714,6 +728,7 @@ uint8_t SDBlockDevice::_cmd_spi(SDBlockDevice::cmdSupported cmd, uint32_t arg)
             break;
         }
     }
+//    printf("Pekka SDBlockDevice::_cmd_spi out \n");
     return response;
 }
 
@@ -721,6 +736,8 @@ int SDBlockDevice::_cmd(SDBlockDevice::cmdSupported cmd, uint32_t arg, bool isAc
 {
     int32_t status = BD_ERROR_OK;
     uint32_t response;
+
+    // printf("Pekka SDBlockDevice::_cmd in\n");
 
     // Select card and wait for card to be ready before sending next command
     // Note: next command will fail if card is not ready
@@ -762,7 +779,7 @@ int SDBlockDevice::_cmd(SDBlockDevice::cmdSupported cmd, uint32_t arg, bool isAc
     if (R1_NO_RESPONSE == response) {
         _deselect();
         debug_if(SD_DBG, "No response CMD:%d response: 0x%" PRIx32 "\n", cmd, response);
-        return SD_BLOCK_DEVICE_ERROR_NO_DEVICE;         // No device
+        return SD_BLOCK_DEVICE_ERROR_NO_DEVICE_1;         // No device
     }
     if (response & R1_COM_CRC_ERROR) {
         _deselect();
@@ -855,6 +872,7 @@ int SDBlockDevice::_cmd8()
 
 uint32_t SDBlockDevice::_go_idle_state()
 {
+    printf("Pekka SDBlockDevice::_go_idle_state in \n");
     uint32_t response;
 
     /* Reseting the MCU SPI master may not reset the on-board SDCard, in which
@@ -869,12 +887,14 @@ uint32_t SDBlockDevice::_go_idle_state()
         }
         wait_ms(1);
     }
+    printf("Pekka SDBlockDevice::_go_idle_state out \n");
     return response;
 }
 
 int SDBlockDevice::_read_bytes(uint8_t *buffer, uint32_t length)
 {
     uint16_t crc;
+    printf("Pekka SDBlockDevice::_read_bytes in \n");
 
     // read until start byte (0xFE)
     if (false == _wait_token(SPI_START_BLOCK)) {
@@ -907,12 +927,14 @@ int SDBlockDevice::_read_bytes(uint8_t *buffer, uint32_t length)
 #endif
 
     _deselect();
+    printf("Pekka SDBlockDevice::_read_bytes out \n");
     return 0;
 }
 
 int SDBlockDevice::_read(uint8_t *buffer, uint32_t length)
 {
     uint16_t crc;
+//    printf("Pekka SDBlockDevice::_read in \n");
 
     // read until start byte (0xFE)
     if (false == _wait_token(SPI_START_BLOCK)) {
@@ -940,6 +962,7 @@ int SDBlockDevice::_read(uint8_t *buffer, uint32_t length)
     }
 #endif
 
+//    printf("Pekka SDBlockDevice::_read out \n");
     return 0;
 }
 
@@ -948,6 +971,8 @@ uint8_t SDBlockDevice::_write(const uint8_t *buffer, uint8_t token, uint32_t len
 
     uint32_t crc = (~0);
     uint8_t response = 0xFF;
+
+    printf("Pekka SDBlockDevice::_write in \n");
 
     // indicate start of block
     _spi.write(token);
@@ -975,6 +1000,8 @@ uint8_t SDBlockDevice::_write(const uint8_t *buffer, uint8_t token, uint32_t len
         debug_if(SD_DBG, "Card not ready yet \n");
     }
 
+    printf("Pekka SDBlockDevice::_write out \n");
+
     return (response & SPI_DATA_RESPONSE_MASK);
 }
 
@@ -998,6 +1025,8 @@ bd_size_t SDBlockDevice::_sd_sectors()
     uint32_t block_len, mult, blocknr;
     uint32_t hc_c_size;
     bd_size_t blocks = 0, capacity = 0;
+
+    printf("Pekka SDBlockDevice::_sd_sectors in \n");
 
     // CMD9, Response R2 (R1 byte + 16-byte block read)
     if (_cmd(CMD9_SEND_CSD, 0x0) != 0x0) {
@@ -1049,6 +1078,7 @@ bd_size_t SDBlockDevice::_sd_sectors()
             debug_if(SD_DBG, "CSD struct unsupported\r\n");
             return 0;
     };
+    printf("Pekka SDBlockDevice::_sd_sectors out \n");
     return blocks;
 }
 
